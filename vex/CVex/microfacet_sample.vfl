@@ -1,0 +1,118 @@
+#include "pbr.h"
+#include "microfacet_bsdf.h"
+
+cvex microfacet_sample (
+
+
+      vector u       = 0.0;     
+      float  sx      = 0.0;     
+      float  sy      = 0.0;     
+      int    bounces = 0;       
+
+      export vector refl       = 0.0;  
+      export vector v          = 0.0;  
+      export int    bouncetype = 0;    
+      export float  pdf        = 0.0;  
+
+
+      int mybounces = 0;
+      vector  ng  = 0;  
+
+
+      float     alpha = 0.1;
+      float     alphaG = 0.1;
+      float     gamma = 2.0;
+      vector    F0 = 0.04;
+      vector    eta = 1.5;
+      vector    k = 1.5;
+      int       Fmeth = 0;
+      int       Ftype = 1;
+      int       Dtype = 1;
+      int       Gtype = 1;
+      int       doCosi = 1;
+
+   )
+{
+
+    F_parms fparms = {0, {0,0,0}, {0,0,0}, {0,0,0}};;
+    G_parms gparms = {
+		{0.,0.,0.}, {0.,0.,0.}, {0.,0.,0.}, {0.,0.,1.},
+		0., 0., 0., 0.,
+		1.
+	};
+    D_parms dparms = {0.0, 0.0};
+    fparms.fmeth = Fmeth;
+    fparms.F0 = F0;
+    fparms.eta = eta;
+    fparms.k = k;
+    dparms.alpha = alpha;
+    dparms.gamma = gamma;
+    D_generic d;
+    d->init(Dtype, dparms);
+
+    bouncetype = bounces & mybounces;
+
+    if(bouncetype) {
+
+        vector framex = 0.0;
+        vector framey = 0.0;
+        vector nn = normalize(ng);
+        makebasis(framex, framey, nn, u);
+        vector refl_frame[] = array(framex, framey, nn);
+        matrix3 from_rspace = matrix3(refl_frame);
+        matrix3 to_rspace = transpose(from_rspace);
+
+        vector  wo  = normalize(u*to_rspace);
+
+        vector wh = d->sample(sx, sy);
+
+
+        if (wo.z * wh.z < 0.0 ) {
+            wh = -wh;
+        }
+
+        float udoth = dot(wo,wh);
+        float a_udoth = abs(udoth);
+        vector wi = 2*dot(wo,wh)*wh - wo;
+
+        if(wh.z > 0 && wi.z > 0) {
+
+            vector F = F_selector(Ftype, fparms, a_udoth);
+            float pdf_h_to_wi = 1.0 / (4.0*a_udoth);
+
+            gparms.wo = wo;
+            gparms.wi = wi;
+            gparms.wh = wh;
+			gparms.NdotWo = wo.z;
+			gparms.NdotWi = wi.z;
+			gparms.WodotWh = udoth;
+			gparms.cosTheta = wh.z;
+            gparms.alpha = alphaG;
+            gparms.alpha = alphaG;
+            float G = G_selector(Gtype, gparms);
+
+
+
+            pdf = d->pdf(wh.z) * wh.z;
+            pdf *= pdf_h_to_wi;
+
+
+
+
+
+
+
+
+
+            refl = d->Rho();
+            refl *= F * G * (doCosi ? wi.z : 1.0);
+            refl /= pdf_h_to_wi * wh.z;
+
+            v = normalize(wi*from_rspace);
+        } else {
+            pdf = 0.0;
+            refl = 0.0;
+            bouncetype = 0;
+        }
+    }
+}

@@ -1,0 +1,90 @@
+#include "pbr.h"
+#include "microfacet_bsdf.h"
+
+cvex microfacet_eval (
+
+
+      vector u       = 0;        
+      vector v       = 0;        
+      int    bounces = 0;        
+      int    reverse = 0;
+      export vector eval = 0;    
+      export vector refl = 0;    
+      export float  pdf  = 0;
+
+
+      int mybounces = 0;
+      vector  ng  = 0;  
+
+
+      float     alpha = 0.1;
+      float     alphaG = 0.1;
+      float     gamma = 2.0;
+      vector    F0 = 0.04;
+      vector    eta = 1.5;
+      vector    k = 1.5;
+      int       Fmeth = 0;
+      int       Ftype = 1;
+      int       Dtype = 1;
+      int       Gtype = 1;
+      int       doCosi = 1;
+
+   )
+{
+
+    F_parms fparms = {0, {0.,0.,0.}, {0.,0.,0.}, {0.,0.,0.}};;
+    G_parms gparms = {
+		{0.,0.,0.}, {0.,0.,0.}, {0.,0.,0.}, {0.,0.,1.},
+		0., 0., 0., 0.,
+		1.
+	};
+    D_parms dparms = {0.0, 0.0};
+    fparms.fmeth = Fmeth;
+    fparms.F0 = F0;
+    fparms.eta = eta;
+    fparms.k = k;
+    dparms.alpha = alpha;
+    dparms.gamma = gamma;
+    D_generic d;
+
+    d->init(Dtype, dparms);
+    refl = d->Rho();
+
+    if (bounces & mybounces) {
+
+        vector n = normalize(ng);
+        vector un = normalize(select(reverse, v, u));
+        vector vn = normalize(select(reverse, u, v));
+        vector h = normalize(un+vn);
+        float Ndotu = dot(n,un);
+        float Ndotv = dot(n,vn);
+        float udoth = dot(un,h);
+        float cosTheta = dot(h,n);
+        float a_udoth = abs(udoth);
+        float a_cosTheta = abs(cosTheta);
+
+        if ( Ndotv <= 0.0 || cosTheta <= 0.0 ) {
+            pdf = 0.0f;
+            eval = 0.0f;
+        } else {
+            vector F = F_selector(Ftype, fparms, a_udoth);
+            gparms.wo = un;
+            gparms.wi = vn;
+            gparms.wh = h;
+            gparms.ng = n;
+			gparms.NdotWo = Ndotu;
+			gparms.NdotWi = Ndotv;
+			gparms.WodotWh = udoth;
+			gparms.cosTheta = cosTheta;
+            gparms.alpha = alphaG;
+            float G = G_selector(Gtype, gparms);
+            float D = d->D(a_cosTheta);
+
+            eval = D * F * G * (doCosi ? Ndotv : 1.0);
+            pdf = d->pdf(a_cosTheta) * a_cosTheta;
+            pdf *= d->Rho();
+            pdf /= (4.0*abs(dot(h,u)));
+        }
+    } 
+}
+
