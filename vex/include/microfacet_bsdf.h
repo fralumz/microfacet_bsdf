@@ -357,6 +357,7 @@ struct D_blinn {
 // TODO : implement in generic selector, and implement aniso
 //
 ///////////////////////////////////////////////////
+
 struct D_ggx {
 
     float m_alpha = 0.0;
@@ -400,6 +401,7 @@ struct D_ggx {
         return SphericalDirection(sinTheta, cosTheta, phi);
     }
 }
+
 
 ///////////////////////////////////////////////////
 //
@@ -462,7 +464,11 @@ struct D_gtr {
     }
 }
 
-
+///////////////////////////////////////////////////
+//
+// Beckmann distribution
+//
+///////////////////////////////////////////////////
 
 struct D_beckmann {
 
@@ -517,6 +523,12 @@ struct D_parms {
     float alpha = 0.0;
     float gamma = 0.0;
 }
+
+///////////////////////////////////////////////////
+//
+// Generic distribution struct.  Calls the selected D type
+//
+///////////////////////////////////////////////////
 
 struct D_generic {
     int m_type = 0;
