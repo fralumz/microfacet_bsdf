@@ -131,8 +131,6 @@ float G_smith1(float ndot; float alpha) {
     if (ndot <= 0.0) {
         return 0.0;
     }
-
-
     float a = alpha*alpha;
     float b = ndot*ndot;
     return 1.0/(ndot + sqrt(a + b - a*b));
@@ -156,9 +154,8 @@ float G_schlick(const G_parms gval) {
     float NdotWo = abs(gval.NdotWo);
     float NdotWi = abs(gval.NdotWi);
     return G_schlick1(NdotWo, cosThetaSqr) * G_schlick1(NdotWi, cosThetaSqr) /
-        (4.0*NdotWo*NdotWi);
+			(4.0*NdotWo*NdotWi);
 }
-
 
 float G_cookTorrance(const G_parms gval) {
     float NdotWh = abs(dot(gval.ng, gval.wh));
@@ -166,7 +163,7 @@ float G_cookTorrance(const G_parms gval) {
     float NdotWi = abs(dot(gval.ng, gval.wi));
     float WodotWh = abs(dot(gval.wo, gval.wh));
     return min(1.0, 2.0*(NdotWh/WodotWh)*min(NdotWi, NdotWo)) / 
-            (4.0*max(0.01,NdotWo*NdotWi));
+			(4.0*max(0.01,NdotWo*NdotWi));
 }
 
 float G_neumann(const G_parms gval) {
@@ -230,9 +227,10 @@ float G_ggx(const G_parms gval) {
     float alpha = max(0.01, gval.alpha);
     float alphaSqr = alpha*alpha;
 
-    return (2.0           ) / (NdotWo+sqrt(alphaSqr+(1.0-alphaSqr) *
-                               NdotWo*NdotWo)) /
-            (4.0           *max(0.01,NdotWi));
+
+
+    return (2.0) / (NdotWo+sqrt(alphaSqr+(1.0-alphaSqr) * NdotWo*NdotWo)) / 
+			(4.0*max(0.01,NdotWi));
 }
 
 float G_schlickBeckmann(const G_parms gval)
@@ -242,8 +240,8 @@ float G_schlickBeckmann(const G_parms gval)
     float alpha = max(0.01, gval.alpha);
     float k = alpha*0.79788456080286535588 ;
 
-    return            1.0/(NdotWo*(1.0-k)+k) /
-            (4.0           *max(0.01,NdotWi));
+    return 1.0/(NdotWo*(1.0-k)+k) /
+			(4.0*max(0.01,NdotWi));
 }
 
 float G_schlickGGX(const G_parms gval)
@@ -253,8 +251,8 @@ float G_schlickGGX(const G_parms gval)
     float alpha = max(0.01, gval.alpha);
     float k = alpha/2.0;
 
-    return            1.0/(NdotWo*(1.0-k)+k) /
-            (4.0           *max(0.01,NdotWi));
+    return 1.0/(NdotWo*(1.0-k)+k) /
+			(4.0*max(0.01,NdotWi));
 }
 
 float G_selector(const int mode; const G_parms gval) {
@@ -293,7 +291,20 @@ float G_selector(const int mode; const G_parms gval) {
 }
 
 
+///////////////////////////////////////////////////
+//
+// Begin Distribution Term Struct defs
+//
+///////////////////////////////////////////////////
 
+
+///////////////////////////////////////////////////
+//
+// Blinn distribution
+//
+// TODO: implement aniso, make sure alpha to exponent mapping matches sesi's
+//
+///////////////////////////////////////////////////
 struct D_blinn {
 
     float m_alpha = 0.0;
@@ -310,18 +321,14 @@ struct D_blinn {
     }
 
     float D() {
-        return                          pow(this.c_cosTheta, this.m_shiny);
+        return pow(this.c_cosTheta, this.m_shiny);
     }
 
     float D(float cosTheta) {
-        return                          pow(cosTheta, this.m_shiny);
+        return pow(cosTheta, this.m_shiny);
     }
 
-
     float Rho() {
-
-
-
         return 1.0/(this.m_shiny+2.0);
     }
 
@@ -334,7 +341,6 @@ struct D_blinn {
     }
 
     vector sample(float sx; float sy;) {
-
          float  cosTheta = pow(1-sx,1.0/(this.m_shiny+1));
          float  sinTheta = sqrt(max(0,1.0-(cosTheta*cosTheta)));
          float  phi = sy * 6.28318530717958647692 ;
@@ -344,7 +350,13 @@ struct D_blinn {
 }
 
 
-
+///////////////////////////////////////////////////
+//
+// Trowbridge-Reitz (GGX) distribution
+//
+// TODO : implement in generic selector, and implement aniso
+//
+///////////////////////////////////////////////////
 struct D_ggx {
 
     float m_alpha = 0.0;
@@ -368,8 +380,6 @@ struct D_ggx {
     }
 
     float Rho() {
-
-
         return  0.5/this.m_alphaSqr;
     }
 
@@ -391,7 +401,11 @@ struct D_ggx {
     }
 }
 
-
+///////////////////////////////////////////////////
+//
+// Generalized Trowbridge-Reitz (GTX) distribution
+//
+///////////////////////////////////////////////////
 
 struct D_gtr {
 
@@ -401,12 +415,6 @@ struct D_gtr {
     float c_cosTheta = 0.0;
 
     void init(float alpha; float gamma) {
-
-
-
-
-
-
         this.m_alpha = max(0.0025, alpha);
         this.m_gamma = gamma;
         this.m_alphaSqr = alpha*alpha;
@@ -422,8 +430,6 @@ struct D_gtr {
     }
 
     float Rho() {
-
-
         if (this.m_gamma == 1.0) {
             return log(this.m_alpha)/(-1.0+this.m_alphaSqr);
         } 
@@ -507,43 +513,10 @@ struct D_beckmann {
     }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 struct D_parms {
     float alpha = 0.0;
     float gamma = 0.0;
 }
-
-
-
-
-
 
 struct D_generic {
     int m_type = 0;
