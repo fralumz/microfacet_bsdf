@@ -3,11 +3,16 @@
 
 #include "ggx_utils.h"
 
-vector SphericalDirection(float sintheta;
-                          float costheta;
-                          float phi) {
+vector SphericalDirection(float sintheta; float costheta; float phi) {
+	// including this function do I don't have to include bsdf_utils.h
     return set(sintheta*cos(phi), sintheta*sin(phi), costheta);
 }
+
+///////////////////////////////////////////////////
+//
+// Begin Fresnel (F) Term Defs
+//
+///////////////////////////////////////////////////
 
 float f0_to_eta(float F0) {
     float f0sqrt = sqrt(clamp(F0, 0.0, 0.999));
@@ -28,7 +33,6 @@ vector eta_to_f0(vector eta;) {
     vector f0sqrt = (eta-1.0)/(eta+1.0);
     return f0sqrt*f0sqrt;
 }
-
 
 vector F_schlick(vector F0; float udoth) {
     float m = clamp(1.0-udoth, 0.0, 1.0);
@@ -71,13 +75,69 @@ vector F_conductor(vector eta; vector k; float udoth) {
     return (Rparl2 + Rperp2) / 2.f;
 }
 
-
-
 struct F_parms {
     int fmeth = 0;
     vector F0 = 0.0;
     vector eta = 0.0;
     vector k = 0.0;
+}
+
+struct F_generic {
+
+	int my_type = 0;
+	F_parms my_parms = {0, {0.,0.,0.}, {0.,0.,0.}, {0.,0.,0.}};
+	float udot = 1.0;
+	
+	void init( int ftype; F_parms fparms; float udoth; int opt ) {
+		this.my_type = ftype;
+		this.my_parms = fparms;
+		this.udot = udoth;
+		if (opt == 1) {
+			// only compute needed values in bsdf, otherwise compute all
+			if (this.my_type == 1 && this.my_parms.fmeth == 1) {
+				this.my_parms.F0 = eta_to_f0(this.my_parms.eta);
+			}
+			else if (this.my_type > 1 && this.my_type < 4 && this.my_parms.fmeth == 0) {
+				this.my_parms.eta = f0_to_eta(this.my_parms.F0);
+			}
+			else if (this.my_type == 4 && this.my_parms.fmeth == 0){
+				this.my_parms.eta = f0_to_eta(this.my_parms.F0);
+				this.my_parms.k = f0_to_k(this.my_parms.F0);
+			}
+		}
+		else {
+			if (this.my_parms.fmeth == 0) {
+				this.my_parms.eta = f0_to_eta(this.my_parms.F0);
+				this.my_parms.k = f0_to_k(this.my_parms.F0);
+			}
+			else {
+				this.my_parms.F0 = eta_to_f0(this.my_parms.eta);
+			}
+		}
+	}
+	
+	vector F() {
+		return this->F(this.my_type,this.my_parms,this.udot);
+	}
+	
+	vector F( const int ftype; const F_parms fparms; const float udoth ) {
+		if (ftype == 0) {
+			return 1.0;
+		}
+		if (ftype == 1) {
+			return F_schlick(fparms.F0, udoth);
+		}
+		if (ftype == 2) {
+			return F_cookTorrance(fparms.eta, udoth);
+		}
+		if (ftype == 3) {
+			return F_dielectric(fparms.eta, udoth);
+		}
+		if (ftype == 4) {
+			return F_conductor(fparms.eta, fparms.k, udoth);
+		}
+		return 1.0;
+	}
 }
 
 vector F_selector(const int mode; const F_parms fval; const float udoth) {
@@ -104,6 +164,12 @@ vector F_selector(const int mode; const F_parms fval; const float udoth) {
     }
     return 1.0;
 }
+
+///////////////////////////////////////////////////
+//
+// Begin Masking (G) Term Struct defs
+//
+///////////////////////////////////////////////////
 
 /*
 struct G_parms {
@@ -167,19 +233,18 @@ float G_cookTorrance(const G_parms gval) {
 }
 
 float G_neumann(const G_parms gval) {
-    return 0.25/max(dot(gval.ng, gval.wo), 
-                    dot(gval.ng, gval.wi));
+    return 0.25/max(dot(gval.ng, gval.wo), dot(gval.ng, gval.wi));
 }
 
 float G_ward(const G_parms gval) {
     return 0.25/sqrt(dot(gval.ng, gval.wo) * 
-                     dot(gval.ng, gval.wi));
+			dot(gval.ng, gval.wi));
 }
 
 float G_ashikhminShirley(const G_parms gval) {
     return 0.25/(abs(dot(gval.wi, gval.wh)) * 
-                    max(abs(dot(gval.ng, gval.wi)),
-                        abs(dot(gval.ng, gval.wo))));
+			max(abs(dot(gval.ng, gval.wi)),
+				abs(dot(gval.ng, gval.wo))));
 }
 
 float G_ashikhminPremoze(const G_parms gval) {
@@ -191,17 +256,13 @@ float G_ashikhminPremoze(const G_parms gval) {
 float G_kurt(const G_parms gval) {
     float alpha = max(0.01, gval.alpha);
     return 1.0/(4.0*dot(gval.wi, gval.wh) * 
-                    pow(abs(dot(gval.ng, gval.wi))* 
-                        abs(dot(gval.ng, gval.wo)), alpha));
+            pow(abs(dot(gval.ng, gval.wi))* 
+				abs(dot(gval.ng, gval.wo)), alpha));
 }
 
 float G_kelemen(const G_parms gval) {
     return 1.0/(2.0*(1.0+abs(dot(gval.wo, gval.wi))));
 }
-
-
-
-
 
 float G_duer(const G_parms gval) {
     float cosThetaSqr = dot(gval.wh, gval.ng);
@@ -218,7 +279,7 @@ float G_beckmann(const G_parms gval) {
         return 1.0 / (4.0*NdotWo*NdotWi);
     }
     return (3.535*c + 2.181*c*c)/(1.0 + 2.276*c + 2.577*c*c) /
-            (4.0*max(0.01,NdotWo*NdotWi));
+			(4.0*max(0.01,NdotWo*NdotWi));
 }
 
 float G_ggx(const G_parms gval) {
@@ -226,9 +287,6 @@ float G_ggx(const G_parms gval) {
     float NdotWi = abs(dot(gval.ng, gval.wi));
     float alpha = max(0.01, gval.alpha);
     float alphaSqr = alpha*alpha;
-
-
-
     return (2.0) / (NdotWo+sqrt(alphaSqr+(1.0-alphaSqr) * NdotWo*NdotWo)) / 
 			(4.0*max(0.01,NdotWi));
 }
@@ -239,7 +297,6 @@ float G_schlickBeckmann(const G_parms gval)
     float NdotWi = abs(dot(gval.ng, gval.wi));
     float alpha = max(0.01, gval.alpha);
     float k = alpha*0.79788456080286535588 ;
-
     return 1.0/(NdotWo*(1.0-k)+k) /
 			(4.0*max(0.01,NdotWi));
 }
@@ -250,7 +307,6 @@ float G_schlickGGX(const G_parms gval)
     float NdotWi = abs(dot(gval.ng, gval.wi));
     float alpha = max(0.01, gval.alpha);
     float k = alpha/2.0;
-
     return 1.0/(NdotWo*(1.0-k)+k) /
 			(4.0*max(0.01,NdotWi));
 }

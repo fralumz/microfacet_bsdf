@@ -45,6 +45,7 @@ cvex microfacet_sample (
     fparms.F0 = F0;
     fparms.eta = eta;
     fparms.k = k;
+	F_generic fgen;
     dparms.alpha = alpha;
     dparms.gamma = gamma;
     D_generic d;
@@ -76,8 +77,10 @@ cvex microfacet_sample (
         vector wi = 2*dot(wo,wh)*wh - wo;
 
         if(wh.z > 0 && wi.z > 0) {
-
-            vector F = F_selector(Ftype, fparms, a_udoth);
+			fgen->init(Ftype,fparms,a_udoth,1);
+			vector F = fgen->F();
+            //vector F = F_selector(Ftype, fparms, a_udoth);
+			
             float pdf_h_to_wi = 1.0 / (4.0*a_udoth);
 
             gparms.wo = wo;
