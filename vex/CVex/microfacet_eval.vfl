@@ -68,9 +68,8 @@ cvex microfacet_eval (
             pdf = 0.0f;
             eval = 0.0f;
         } else {
-			fgen->init(Ftype,fparms,a_udoth,1);
-			vector F = fgen->F();
-            //vector F = F_selector(Ftype, fparms, a_udoth);
+			fgen->init(Ftype,fparms,1);
+			vector F = fgen->F(a_udoth);
             gparms.wo = un;
             gparms.wi = vn;
             gparms.wh = h;

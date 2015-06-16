@@ -88,10 +88,9 @@ struct F_generic {
 	F_parms my_parms = {0, {0.,0.,0.}, {0.,0.,0.}, {0.,0.,0.}};
 	float udot = 1.0;
 	
-	void init( int ftype; F_parms fparms; float udoth; int opt ) {
+	void init( int ftype; F_parms fparms; int opt ) {
 		this.my_type = ftype;
 		this.my_parms = fparms;
-		this.udot = udoth;
 		if (opt == 1) {
 			// only compute needed values in bsdf, otherwise compute all
 			if (this.my_type == 1 && this.my_parms.fmeth == 1) {
@@ -116,27 +115,25 @@ struct F_generic {
 		}
 	}
 	
-	vector F() {
-		return this->F(this.my_type,this.my_parms,this.udot);
-	}
-	
-	vector F( const int ftype; const F_parms fparms; const float udoth ) {
-		if (ftype == 0) {
+	vector F(const float udoth) {
+		if (this.my_type == 0) {
 			return 1.0;
 		}
-		if (ftype == 1) {
-			return F_schlick(fparms.F0, udoth);
+		if (this.my_type == 1) {
+			return F_schlick(my_parms.F0, udoth);
 		}
-		if (ftype == 2) {
-			return F_cookTorrance(fparms.eta, udoth);
+		if (this.my_type == 2) {
+			return F_cookTorrance(my_parms.eta, udoth);
 		}
-		if (ftype == 3) {
-			return F_dielectric(fparms.eta, udoth);
+		if (this.my_type == 3) {
+			return F_dielectric(my_parms.eta, udoth);
 		}
-		if (ftype == 4) {
-			return F_conductor(fparms.eta, fparms.k, udoth);
+		if (this.my_type == 4) {
+			return F_conductor(my_parms.eta, my_parms.k, udoth);
 		}
-		return 1.0;
+		else {
+			return 1.0;
+		}
 	}
 }
 
@@ -225,39 +222,37 @@ float G_schlick(const G_parms gval) {
 
 float G_cookTorrance(const G_parms gval) {
     float NdotWh = abs(dot(gval.ng, gval.wh));
-    float NdotWo = abs(dot(gval.ng, gval.wo));
-    float NdotWi = abs(dot(gval.ng, gval.wi));
-    float WodotWh = abs(dot(gval.wo, gval.wh));
+    float NdotWo = abs(gval.NdotWo);
+    float NdotWi = abs(gval.NdotWi);
+    float WodotWh = abs(gval.WodotWh);
     return min(1.0, 2.0*(NdotWh/WodotWh)*min(NdotWi, NdotWo)) / 
 			(4.0*max(0.01,NdotWo*NdotWi));
 }
 
 float G_neumann(const G_parms gval) {
-    return 0.25/max(dot(gval.ng, gval.wo), dot(gval.ng, gval.wi));
+    return 0.25/max(gval.NdotWo, gval.NdotWi);
 }
 
 float G_ward(const G_parms gval) {
-    return 0.25/sqrt(dot(gval.ng, gval.wo) * 
-			dot(gval.ng, gval.wi));
+    return 0.25/sqrt(gval.NdotWo * gval.NdotWi);
 }
 
 float G_ashikhminShirley(const G_parms gval) {
     return 0.25/(abs(dot(gval.wi, gval.wh)) * 
-			max(abs(dot(gval.ng, gval.wi)),
-				abs(dot(gval.ng, gval.wo))));
+			max(abs(gval.NdotWi),abs(gval.NdotWo)));
 }
 
 float G_ashikhminPremoze(const G_parms gval) {
-    float NdotWo = abs(dot(gval.ng, gval.wo));
-    float NdotWi = abs(dot(gval.ng, gval.wi));
+    float NdotWo = abs(gval.NdotWo);
+    float NdotWi = abs(gval.NdotWi);
     return 0.25/(NdotWi+NdotWo - NdotWi*NdotWo);
 }
 
 float G_kurt(const G_parms gval) {
     float alpha = max(0.01, gval.alpha);
     return 1.0/(4.0*dot(gval.wi, gval.wh) * 
-            pow(abs(dot(gval.ng, gval.wi))* 
-				abs(dot(gval.ng, gval.wo)), alpha));
+            pow(abs(gval.NdotWi)* 
+				abs(gval.NdotWo), alpha));
 }
 
 float G_kelemen(const G_parms gval) {
@@ -265,14 +260,13 @@ float G_kelemen(const G_parms gval) {
 }
 
 float G_duer(const G_parms gval) {
-    float cosThetaSqr = dot(gval.wh, gval.ng);
-    cosThetaSqr *= cosThetaSqr;
+    float cosThetaSqr = gval.cosTheta * gval.cosTheta;
     return dot(gval.wh, gval.wh) / (3.14159265358979323846 *cosThetaSqr*cosThetaSqr);
 }
 
 float G_beckmann(const G_parms gval) {
-    float NdotWo = abs(dot(gval.ng, gval.wo));
-    float NdotWi = abs(dot(gval.ng, gval.wi));
+    float NdotWo = abs(gval.NdotWo);
+    float NdotWi = abs(gval.NdotWi);
     float alpha = max(0.01, gval.alpha);
     float c = NdotWo/(alpha * sqrt(1.0 - (NdotWo*NdotWo)));
     if ( c >= 1.6 ) {
@@ -283,8 +277,8 @@ float G_beckmann(const G_parms gval) {
 }
 
 float G_ggx(const G_parms gval) {
-    float NdotWo = abs(dot(gval.ng, gval.wo));
-    float NdotWi = abs(dot(gval.ng, gval.wi));
+    float NdotWo = abs(gval.NdotWo);
+    float NdotWi = abs(gval.NdotWi);
     float alpha = max(0.01, gval.alpha);
     float alphaSqr = alpha*alpha;
     return (2.0) / (NdotWo+sqrt(alphaSqr+(1.0-alphaSqr) * NdotWo*NdotWo)) / 
@@ -293,8 +287,8 @@ float G_ggx(const G_parms gval) {
 
 float G_schlickBeckmann(const G_parms gval)
 {
-    float NdotWo = abs(dot(gval.ng, gval.wo));
-    float NdotWi = abs(dot(gval.ng, gval.wi));
+    float NdotWo = abs(gval.NdotWo);
+    float NdotWi = abs(gval.NdotWi);
     float alpha = max(0.01, gval.alpha);
     float k = alpha*0.79788456080286535588 ;
     return 1.0/(NdotWo*(1.0-k)+k) /
@@ -303,8 +297,8 @@ float G_schlickBeckmann(const G_parms gval)
 
 float G_schlickGGX(const G_parms gval)
 {
-    float NdotWo = abs(dot(gval.ng, gval.wo));
-    float NdotWi = abs(dot(gval.ng, gval.wi));
+    float NdotWo = abs(gval.NdotWo);
+    float NdotWi = abs(gval.NdotWi);
     float alpha = max(0.01, gval.alpha);
     float k = alpha/2.0;
     return 1.0/(NdotWo*(1.0-k)+k) /
@@ -617,37 +611,37 @@ struct D_generic {
     }
 
     float D(float cosTheta) {
-                    if (this.m_type == 0 ) return this.m_blinn->D(cosTheta);
-                    if (this.m_type == 1 ) return this.m_gtr->D(cosTheta);
-                    if (this.m_type == 2 ) return this.m_beckmann->D(cosTheta);
+		if (this.m_type == 0 ) return this.m_blinn->D(cosTheta);
+		if (this.m_type == 1 ) return this.m_gtr->D(cosTheta);
+		if (this.m_type == 2 ) return this.m_beckmann->D(cosTheta);
         return 0.0;
     }
 
     float D() {
-                    if (this.m_type == 0 ) return this.m_blinn->D();
-                    if (this.m_type == 1 ) return this.m_gtr->D();
-                    if (this.m_type == 2 ) return this.m_beckmann->D();
+		if (this.m_type == 0 ) return this.m_blinn->D();
+		if (this.m_type == 1 ) return this.m_gtr->D();
+		if (this.m_type == 2 ) return this.m_beckmann->D();
         return 0.0;
     }
 
     float Rho() {
-                    if (this.m_type == 0 ) return this.m_blinn->Rho();
-                    if (this.m_type == 1 ) return this.m_gtr->Rho();
-                    if (this.m_type == 2 ) return this.m_beckmann->Rho();
+		if (this.m_type == 0 ) return this.m_blinn->Rho();
+		if (this.m_type == 1 ) return this.m_gtr->Rho();
+		if (this.m_type == 2 ) return this.m_beckmann->Rho();
         return 0.0;
     }
 
     float pdf(float cosTheta) {
-                    if (this.m_type == 0 ) return this.m_blinn->pdf(cosTheta);
-                    if (this.m_type == 1 ) return this.m_gtr->pdf(cosTheta);
-                    if (this.m_type == 2 ) return this.m_beckmann->pdf(cosTheta);
+		if (this.m_type == 0 ) return this.m_blinn->pdf(cosTheta);
+		if (this.m_type == 1 ) return this.m_gtr->pdf(cosTheta);
+		if (this.m_type == 2 ) return this.m_beckmann->pdf(cosTheta);
         return 0.0;
     }
 
     float pdf() {
-                    if (this.m_type == 0 ) return this.m_blinn->pdf();
-                    if (this.m_type == 1 ) return this.m_gtr->pdf();
-                    if (this.m_type == 2 ) return this.m_beckmann->pdf();
+		if (this.m_type == 0 ) return this.m_blinn->pdf();
+		if (this.m_type == 1 ) return this.m_gtr->pdf();
+		if (this.m_type == 2 ) return this.m_beckmann->pdf();
         return 0.0;
     }
 

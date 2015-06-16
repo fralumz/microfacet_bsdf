@@ -77,9 +77,8 @@ cvex microfacet_sample (
         vector wi = 2*dot(wo,wh)*wh - wo;
 
         if(wh.z > 0 && wi.z > 0) {
-			fgen->init(Ftype,fparms,a_udoth,1);
-			vector F = fgen->F();
-            //vector F = F_selector(Ftype, fparms, a_udoth);
+			fgen->init(Ftype,fparms,1);
+			vector F = fgen->F(a_udoth);
 			
             float pdf_h_to_wi = 1.0 / (4.0*a_udoth);
 
@@ -94,18 +93,8 @@ cvex microfacet_sample (
             gparms.alpha = alphaG;
             float G = G_selector(Gtype, gparms);
 
-
-
             pdf = d->pdf(wh.z) * wh.z;
             pdf *= pdf_h_to_wi;
-
-
-
-
-
-
-
-
 
             refl = d->Rho();
             refl *= F * G * (doCosi ? wi.z : 1.0);
