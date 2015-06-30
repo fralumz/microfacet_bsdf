@@ -127,13 +127,13 @@ struct F_generic {
 				this.my_parms.eta = f0_to_eta(this.my_parms.F0);
 				this.my_parms.k = f0_to_k(this.my_parms.F0);
 			}
-			else if (this.my_parms.fmeth == 1 && this.my_type == 4) {
+			else if (this.my_parms.fmeth == 1 && this.my_type == 1) {
 				this.my_parms.F0 = eta_to_f0(this.my_parms.eta);
 			}
-			else {
-				this.my_parms.F0 = eta_to_f0(this.my_parms.eta);
-				this.my_parms.k = 0;
-			}
+			// else {
+				// this.my_parms.F0 = eta_to_f0(this.my_parms.eta);
+				// this.my_parms.k = 0;
+			// }
 		}
 	}
 	
