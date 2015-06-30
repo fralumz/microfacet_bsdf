@@ -93,15 +93,33 @@ struct F_generic {
 		this.my_parms = fparms;
 		if (opt == 1) {
 			// only compute needed values in bsdf, otherwise compute all
-			if (this.my_type == 1 && this.my_parms.fmeth == 1) {
+			if (this.my_type == 0) {
+				this.my_parms.F0 = {1,1,1};
+				this.my_parms.eta = 1.0;
+				this.my_parms.k = 0;
+			}
+			else if (this.my_type == 1 && this.my_parms.fmeth == 1) {
 				this.my_parms.F0 = eta_to_f0(this.my_parms.eta);
+				this.my_parms.k = 0;
+
+			}
+			else if (this.my_type == 1 && this.my_parms.fmeth == 0) {
+				this.my_parms.F0 = {1,1,1};
 			}
 			else if (this.my_type > 1 && this.my_type < 4 && this.my_parms.fmeth == 0) {
 				this.my_parms.eta = f0_to_eta(this.my_parms.F0);
+				this.my_parms.k = 0;
+			}
+			else if (this.my_type > 1 && this.my_type < 4 && this.my_parms.fmeth == 1) {
+				this.my_parms.F0 = {1,1,1};
+				this.my_parms.k = 0;
 			}
 			else if (this.my_type == 4 && this.my_parms.fmeth == 0){
 				this.my_parms.eta = f0_to_eta(this.my_parms.F0);
 				this.my_parms.k = f0_to_k(this.my_parms.F0);
+			}
+			else {
+				this.my_parms.F0 = {1,1,1};
 			}
 		}
 		else {
@@ -111,6 +129,7 @@ struct F_generic {
 			}
 			else {
 				this.my_parms.F0 = eta_to_f0(this.my_parms.eta);
+				this.my_parms.k = 0;
 			}
 		}
 	}
