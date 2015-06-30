@@ -1,0 +1,5 @@
+copy /Y vex\include\microfacet_bsdf.h "%USERPROFILE%\Documents\houdini14.0\vex\include"
+copy /Y otls\microfacet_sample.hda "%USERPROFILE%\Documents\houdini14.0\otls"
+copy /Y otls\microfacet_fresnel.hda "%USERPROFILE%\Documents\houdini14.0\otls"
+copy /Y otls\microfacet_eval.hda "%USERPROFILE%\Documents\houdini14.0\otls"
+copy /Y otls\microfacet_bsdf.hda "%USERPROFILE%\Documents\houdini14.0\otls"
